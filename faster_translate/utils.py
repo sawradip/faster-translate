@@ -48,9 +48,9 @@ def download_model_hf(repo_name, save_path=None, revision=None, token=None):
 
     downloaded_path = snapshot_download(
         repo_id=repo_name,
-        cache_dir=save_path,  # If None, huggingface_hub uses its default cache directory
+        cache_dir=save_path,  
         revision=revision,
-        use_auth_token=token if token else True  # Pass True to use the token from the HF_HOME or token cache if available
+        token=token if token else None  
     )
     
     print(f"Model downloaded to {downloaded_path}.")

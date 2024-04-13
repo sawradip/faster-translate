@@ -1,5 +1,6 @@
 import os
 import json
+import subprocess
 import ctranslate2
 from tqdm.auto import tqdm
 from tokenizers import Tokenizer
@@ -9,8 +10,25 @@ from tokenizers.trainers import BpeTrainer
 
 from .utils import download_model_hf, _MODELS
 
+
+def is_cuda_available():
+    # Method 1: Check using nvcc
+    try:
+        subprocess.check_output(['nvcc', '--version'])
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # Method 2: Check CUDA_PATH environment variable
+    if 'CUDA_PATH' in os.environ:
+        return True
+
+    return False
+
+device_name = "cuda" if is_cuda_available() else "cpu"
+
 class TranslateModel:
-    def __init__(self, model_dir, source_token_list = None, normalizer_func=None, device = "cuda"):
+    def __init__(self, model_dir, source_token_list = None, normalizer_func=None, device = device_name):
         self.model_dir = model_dir
         self.translator = ctranslate2.Translator(model_dir, device=device)
         
@@ -50,7 +68,11 @@ class TranslateModel:
     
     def get_text_normalizer(self, normalizer_func_name):
         if normalizer_func_name == "buetnlpnormalizer":
-            from normalizer import normalize
+            try:
+                from normalizer import normalize
+            except:
+                raise Exception("Relevant Normalizer not installed, please install with `pip install git+https://github.com/csebuetnlp/normalizer`")
+            
             normalizer_func = lambda texts: [normalize(text) for text in texts]
         else:
             raise Exception(f"{normalizer_func_name} not supported yet.")

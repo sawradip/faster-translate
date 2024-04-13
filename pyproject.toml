@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "faster_translate"
-version = "0.1.1"
+version = "0.1.3"
 description = "A simple translation utility using Hugging Face models."
 readme = "README.md"
 authors = [{name = "Sawradip Saha", email = "sawradip0@gmail.com"}]
@@ -20,3 +20,4 @@ dependencies = [
     "ctranslate2>=4.1.0",
     "tokenizers>=0.15.2",
 ]
+
