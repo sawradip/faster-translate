@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+faster_translate/__init__.py
+faster_translate/model.py
+faster_translate/utils.py
+faster_translate.egg-info/PKG-INFO
+faster_translate.egg-info/SOURCES.txt
+faster_translate.egg-info/dependency_links.txt
+faster_translate.egg-info/requires.txt
+faster_translate.egg-info/top_level.txt

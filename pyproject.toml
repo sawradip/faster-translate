@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "faster_translate"
+version = "0.1.1"
+description = "A simple translation utility using Hugging Face models."
+readme = "README.md"
+authors = [{name = "Sawradip Saha", email = "sawradip0@gmail.com"}]
+license = {file = "LICENSE"}
+keywords = ["translation", "huggingface", "nlp"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "huggingface_hub>=0.0.12",
+    "ctranslate2>=4.1.0",
+    "tokenizers>=0.15.2",
+]
