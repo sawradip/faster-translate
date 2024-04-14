@@ -55,13 +55,14 @@ class TranslateModel:
         tokenizer.pre_tokenizer = Whitespace()
         
         # Trainer to train the tokenizer
-        trainer = BpeTrainer(special_tokens=token_list)
+        trainer = BpeTrainer(special_tokens=token_list, vocab_size=len(token_list), min_frequency=1)
         tokenizer.train_from_iterator(token_list, trainer=trainer)
         
         return tokenizer
     
     
     def source_tokenize_batch(self, text_batch):
+        text_batch = [f" {text}".replace(" ", "▁") for text in text_batch]
         tokenized_batch = [encoded.tokens for encoded in self.source_tokenizer.encode_batch(text_batch)]
         return tokenized_batch
     
