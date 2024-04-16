@@ -3,6 +3,7 @@ import json
 import subprocess
 import ctranslate2
 from tqdm.auto import tqdm
+from datasets import load_dataset
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from transformers import AutoTokenizer
@@ -158,8 +159,102 @@ class TranslateModel:
                 file.write(translated_str)
                 
         return translated_results
+
+    def translate_hf_dataset(self, 
+                             dataset_repo, 
+                             subset_name = None,
+                             split=["train"], 
+                             columns=[], 
+                             batch_size=1, 
+                             token = None, 
+                             start_idx = 0,
+                             end_idx = -1,
+                             output_format = "json",
+                             output_name="preds.json",):
+
+        dataset_args = [dataset_repo]
+        if subset_name is not None:
+            dataset_args.append(subset_name)
+            
+        dataset_kwargs = {}
+        if token is not None:
+            dataset_kwargs["token"] = token
+        dataset = load_dataset(*dataset_args, **dataset_kwargs)
+
+        
+        if split == "*":
+            split = [split for split in dataset.keys()]
+        if isinstance(split, str):
+            split = [split]
+        
+        final_dataset_dict = {}
+        for split_name in split:
+            split_data = dataset[split_name]
+            
+            flattened_data_list = []
+            data_length_map = []
+            final_dataset_dict[split_name] = {}
+            for column in columns:
+                data_list = split_data[column]
+                
+                if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endsswith("]") and isinstance(eval(data_list[0]), list)):
+                    for sample in data_list[start_idx:end_idx]:
+                        sample = sample if isinstance(data_list[0], list) else eval(sample)
+                        data_length_map.append(len(sample))
+                        flattened_data_list.extend(sample)
+                elif isinstance(data_list[0], str):
+                    flattened_data_list = data_list[start_idx:end_idx]
+                else:
+                    raise Exception(f"We only support of `str` or `List[str]` type columns,  not `{type(data_list[0])}`")
+                
+                translated_flattened_data_list = self.translate_bulk(flattened_data_list, batch_size=batch_size)
+                
+                index_ptr = 0
+                translated_data_list = []
+                if data_length_map == []:
+                    translated_data_list = translated_flattened_data_list
+                for data_length in data_length_map:
+                    translated_data_list.append(translated_flattened_data_list[index_ptr: index_ptr+data_length])
+                    index_ptr += data_length
+                    
+                final_dataset_dict[split_name][column] = translated_data_list
+                
+        with open(output_name, 'w', encoding='utf-8') as f:
+            json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
+            
+        return final_dataset_dict
+            
+            
+                
+            
+                    
+                
+                    
+                        
+                    
+                    
+                
+            
+        
+        # text_list = dataset[split][column]
     
+        # # Subset the text list if start_index and end_index are provided
+        # if start_index is not None and end_index is not None:
+        #     text_list = text_list[start_index:end_index+1]  # Add 1 to end_index to include it in the range
     
+        # # Translate in batches
+        # translated_results=[]
+        # for text in text_list:
+        #     translated_batch=self.translate_batch1(text,batch_size=batch_size)
+        #     translated_results.append(translated_batch)
+        # return translated_results
+            
+        # translated_results = []
+        # for i in range(0, len(text_list), batch_size):
+        #     batch = text_list[i:i + batch_size]
+        #     translated_batch = self.translate_batch(batch)
+        #     translated_results.append(translated_batch)
+        # return translated_results
     @classmethod
     def from_pretrained(cls, model_name_or_path, save_path=None, revision=None, token=None, tokenizer_repo = None, **kwargs):
         """
