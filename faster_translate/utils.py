@@ -4,10 +4,15 @@ import os
 _MODELS = {
     "banglanmt_bn2en": {
         "model_repo": "sawradip/faster-translate-banglanmt-bn2en-t5",
-        "normalizer_func":"buetnlpnormalizer"
+        "normalizer_func":"buetnlpnormalizer",
     },
     "banglanmt_en2bn": {
-        "model_repo": "sawradip/faster-translate-banglanmt-en2bn-t5"
+        "model_repo": "sawradip/faster-translate-banglanmt-en2bn-t5",
+        
+    },
+    "bangla_mbartv1_en2bn": {
+        "model_repo": "sawradip/faster-translate-banglabart-en2bn-v1",
+        "tokenizer_repo": "facebook/mbart-large-50-many-to-many-mmt"
     }
 }
 def upload_model_hf(repo_name, folder_path, token ):
@@ -45,7 +50,8 @@ def download_model_hf(repo_name, save_path=None, revision=None, token=None):
     if repo_name in _MODELS:
         model_args = _MODELS[repo_name]
         repo_name = model_args["model_repo"]
-
+        
+    print(f"Downloading model from Hugging Face repository: {repo_name}")
     downloaded_path = snapshot_download(
         repo_id=repo_name,
         cache_dir=save_path,  

@@ -5,6 +5,7 @@ import ctranslate2
 from tqdm.auto import tqdm
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
+from transformers import AutoTokenizer
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
 
@@ -28,7 +29,7 @@ def is_cuda_available():
 device_name = "cuda" if is_cuda_available() else "cpu"
 
 class TranslateModel:
-    def __init__(self, model_dir, source_token_list = None, normalizer_func=None, device = device_name):
+    def __init__(self, model_dir, source_token_list = None, tokenizer_filename = None, tokenizer_repo = None, normalizer_func=None, device = device_name):
         self.model_dir = model_dir
         self.translator = ctranslate2.Translator(model_dir, device=device)
         
@@ -39,14 +40,36 @@ class TranslateModel:
         else:
             self.normalizer_func = normalizer_func
             
-            
-        if source_token_list is None:
-            self.source_tokenizer_json = os.path.join(model_dir, "source_vocabulary.json")
-            with open(self.source_tokenizer_json, 'r', encoding='utf-8') as file:
-                source_token_list = json.load(file)
-            
-        self.source_tokenizer = self.get_bpe_tokenizer(source_token_list)
+        self.source_tokenizer = self.get_hf_tokenizer(tokenizer_repo)
+        if self.source_tokenizer is None:
+            if source_token_list is None:
+                source_token_list = self.get_token_list(tokenizer_filename)
+            self.source_tokenizer = self.get_bpe_tokenizer(source_token_list)
         
+    def get_hf_tokenizer(self, tokenizer_repo):
+        if tokenizer_repo is not None:
+            return  AutoTokenizer.from_pretrained(tokenizer_repo)
+        elif os.path.isfile(os.path.join(self.model_dir, 'tokenizer_config.json')):
+            return  AutoTokenizer.from_pretrained(self.model_dir)
+        else:
+            return None       
+         
+    def get_token_list(self, tokenizer_filename):
+        
+        if tokenizer_filename is not None:
+            tokenizer_filepath  = os.path.join(self.model_dir, tokenizer_filename)
+        elif os.path.isfile(os.path.join(self.model_dir, "source_vocabulary.json")):
+            tokenizer_filepath  = os.path.join(self.model_dir, "source_vocabulary.json")
+        elif os.path.isfile(os.path.join(self.model_dir, "shared_vocabulary.json")):
+            tokenizer_filepath  = os.path.join(self.model_dir, "shared_vocabulary.json")
+        else:
+            raise Exception("Vocabulary file was not found.")
+        
+        with open(tokenizer_filepath, 'r', encoding='utf-8') as file:
+            source_token_list = json.load(file)
+        return source_token_list
+    
+
         
     def get_bpe_tokenizer(self, token_list):
         
@@ -62,8 +85,12 @@ class TranslateModel:
     
     
     def source_tokenize_batch(self, text_batch):
-        text_batch = [f" {text}".replace(" ", "▁") for text in text_batch]
-        tokenized_batch = [encoded.tokens for encoded in self.source_tokenizer.encode_batch(text_batch)]
+        if isinstance(self.source_tokenizer, Tokenizer):
+            text_batch = [f" {text}".replace(" ", "▁") for text in text_batch]
+            tokenized_batch = [encoded.tokens for encoded in self.source_tokenizer.encode_batch(text_batch)]
+        else:
+            tokenized_batch = [self.source_tokenizer.convert_ids_to_tokens(
+                                    input_id_list) for input_id_list in self.source_tokenizer(text_batch)["input_ids"]]
         return tokenized_batch
     
     
@@ -81,10 +108,12 @@ class TranslateModel:
         
         
     def detokenize_single(self, tokens):
-        # Concatenate, replace special prefix, and handle edge cases
-        concatenated = ''.join(tokens)
-        proper_string = concatenated.replace('▁', ' ').strip()
-        proper_string = proper_string.replace(' ,', ',').replace(' .', '.').replace(" '", "'").replace(" :", ":")
+        if isinstance(self.source_tokenizer, Tokenizer):
+            concatenated = ''.join(tokens)
+            proper_string = concatenated.replace('▁', ' ').strip()
+            proper_string = proper_string.replace(' ,', ',').replace(' .', '.').replace(" '", "'").replace(" :", ":")
+        else:
+            proper_string = self.source_tokenizer.decode(self.source_tokenizer.convert_tokens_to_ids(tokens), skip_special_tokens=True)
         return proper_string
     
     
@@ -132,7 +161,7 @@ class TranslateModel:
     
     
     @classmethod
-    def from_pretrained(cls, model_name_or_path, save_path=None, revision=None, token=None, **kwargs):
+    def from_pretrained(cls, model_name_or_path, save_path=None, revision=None, token=None, tokenizer_repo = None, **kwargs):
         """
         This is for loading any pre converted translation model from huggingface.
     
@@ -147,6 +176,7 @@ class TranslateModel:
         if model_name_or_path in _MODELS:
             model_args = _MODELS[model_name_or_path]
             kwargs["normalizer_func"] = model_args.get("normalizer_func")
+            kwargs["tokenizer_repo"] = tokenizer_repo if tokenizer_repo else model_args.get("tokenizer_repo")
             
         # Check if model_identifier is a local directory
         if os.path.isdir(model_name_or_path):
@@ -154,7 +184,6 @@ class TranslateModel:
             model_path = model_name_or_path
         else:
             # Download the model using the utility function from faster_translate/utils.py
-            print(f"Downloading model from Hugging Face repository: {model_name_or_path}")
             model_path = download_model_hf(model_name_or_path, save_path, revision, token)
         
         return TranslateModel(model_path, **kwargs)
