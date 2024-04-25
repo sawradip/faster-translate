@@ -137,7 +137,7 @@ class TranslateModel:
         return translated_batch
     
     
-    def translate_bulk(self, text_list, batch_size=1):
+    def translate_bulk(self, text_list, batch_size=16):
         text_batches = [text_list[i:i + batch_size] for i in range(0, len(text_list), batch_size)]
         
         translated_results = []
@@ -165,7 +165,7 @@ class TranslateModel:
                              subset_name = None,
                              split=["train"], 
                              columns=[], 
-                             batch_size=1, 
+                             batch_size=16, 
                              token = None, 
                              start_idx = 0,
                              end_idx = -1,
