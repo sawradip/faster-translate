@@ -3,7 +3,7 @@ import json
 import subprocess
 import ctranslate2
 from tqdm.auto import tqdm
-from datasets import load_dataset
+from datasets import load_dataset,DatasetDict
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from transformers import AutoTokenizer
@@ -170,7 +170,10 @@ class TranslateModel:
                              start_idx = 0,
                              end_idx = -1,
                              output_format = "json",
-                             output_name="preds.json",):
+                             output_name="preds.json",
+                             push_to_hub=False,
+                             save_repo_name=None,
+                             ):
 
         dataset_args = [dataset_repo]
         if subset_name is not None:
@@ -180,20 +183,19 @@ class TranslateModel:
         if token is not None:
             dataset_kwargs["token"] = token
         dataset = load_dataset(*dataset_args, **dataset_kwargs)
-
         
         if split == "*":
             split = [split for split in dataset.keys()]
         if isinstance(split, str):
             split = [split]
-        
+        temp_dataset = {}
         final_dataset_dict = {}
         for split_name in split:
             split_data = dataset[split_name]
-            
             flattened_data_list = []
             data_length_map = []
             final_dataset_dict[split_name] = {}
+            temp_dataset[split_name] = split_data.select(range(start_idx, end_idx)) 
             for column in columns:
                 data_list = split_data[column]
                 
@@ -216,26 +218,20 @@ class TranslateModel:
                 for data_length in data_length_map:
                     translated_data_list.append(translated_flattened_data_list[index_ptr: index_ptr+data_length])
                     index_ptr += data_length
-                    
-                final_dataset_dict[split_name][column] = translated_data_list
                 
+                final_dataset_dict[split_name][column] = translated_data_list
+                temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
+            
+        if push_to_hub:
+            if save_repo_name is not None:
+                temp_dataset = DatasetDict(temp_dataset)
+                temp_dataset.push_to_hub(repo_id=save_repo_name, token=token)
+
         with open(output_name, 'w', encoding='utf-8') as f:
             json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
             
         return final_dataset_dict
-            
-            
-                
-            
-                    
-                
-                    
-                        
-                    
-                    
-                
-            
-        
+
         # text_list = dataset[split][column]
     
         # # Subset the text list if start_index and end_index are provided

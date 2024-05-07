@@ -5,3 +5,4 @@ dist/
 faster_translate.egg-info/
 *.ipynb
 .venv/
+preds.json
