@@ -220,7 +220,8 @@ class TranslateModel:
                     index_ptr += data_length
                 
                 final_dataset_dict[split_name][column] = translated_data_list
-                temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
+                temp_dataset[split_name] = temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
+
             
         if push_to_hub:
             if save_repo_name is not None:
