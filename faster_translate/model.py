@@ -220,7 +220,11 @@ class TranslateModel:
                     index_ptr += data_length
                 
                 final_dataset_dict[split_name][column] = translated_data_list
-                temp_dataset[split_name] = temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
+                print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
+                if len(temp_dataset[split_name]) == len(translated_data_list):
+                    temp_dataset[split_name] = temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
+                else: 
+                    print("Given data and Translated data length doesn't match")
 
         with open(output_name, 'w', encoding='utf-8') as f:
             json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
