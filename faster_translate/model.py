@@ -195,7 +195,11 @@ class TranslateModel:
             flattened_data_list = []
             data_length_map = []
             final_dataset_dict[split_name] = {}
-            temp_dataset[split_name] = split_data.select(range(start_idx, end_idx)) 
+            if end_idx == -1:
+                temp_dataset[split_name] = split_data.select(range(start_idx, len(split_data))) 
+            else:
+                temp_dataset[split_name] = split_data.select(range(start_idx, end_idx)) 
+            
             for column in columns:
                 data_list = split_data[column]
                 
@@ -220,6 +224,7 @@ class TranslateModel:
                     index_ptr += data_length
                 
                 final_dataset_dict[split_name][column] = translated_data_list
+                
                 print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
                 if len(temp_dataset[split_name]) == len(translated_data_list):
                     temp_dataset[split_name] = temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
