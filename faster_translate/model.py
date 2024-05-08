@@ -222,14 +222,15 @@ class TranslateModel:
                 final_dataset_dict[split_name][column] = translated_data_list
                 temp_dataset[split_name] = temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
 
-            
+        with open(output_name, 'w', encoding='utf-8') as f:
+            json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
+        
         if push_to_hub:
             if save_repo_name is not None:
                 temp_dataset = DatasetDict(temp_dataset)
                 temp_dataset.push_to_hub(repo_id=save_repo_name, token=token)
-
-        with open(output_name, 'w', encoding='utf-8') as f:
-            json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
+            else:
+                print("Please provide a valid huggingface repo name for saving the dataset.")
             
         return final_dataset_dict
 
