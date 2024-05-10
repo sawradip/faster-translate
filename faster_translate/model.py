@@ -166,7 +166,8 @@ class TranslateModel:
                             split=["train"], 
                             columns=[], 
                             batch_size=16, 
-                            token=None, 
+                            token=None,
+                            translation_size=None,
                             start_idx=0,
                             end_idx=None,
                             output_format="json",
@@ -188,6 +189,7 @@ class TranslateModel:
             split = [split for split in dataset.keys()]
         if isinstance(split, str):
             split = [split]
+        
         temp_dataset = {}
         final_dataset_dict = {}
         for split_name in split:
@@ -196,12 +198,18 @@ class TranslateModel:
             data_length_map = []
             final_dataset_dict[split_name] = {}
             
-            #handling last index for full dataset.
-            if end_idx == None:
-                end_idx = len(split_data)
-            # handling negative indices properly for each splits.
-            _start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
-            _end_idx = len(split_data)+end_idx if end_idx < 0 else end_idx
+            ## added translation_size to deal with the hassle of finding end_index
+            if translation_size == None:
+                #handling last index for full dataset.
+                if end_idx == None:
+                    end_idx = len(split_data)
+                # handling negative indices properly for each splits.
+                _start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
+                _end_idx = len(split_data)+end_idx if end_idx < 0 else end_idx
+            else:
+                _start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
+                _end_idx = int(len(split_data) * translation_size) if translation_size <= 1 else len(split_data)
+            
             temp_dataset[split_name] = split_data.select(range(_start_idx, _end_idx)) 
             
             for column in columns:
@@ -294,17 +302,6 @@ class TranslateModel:
             model_path = download_model_hf(model_name_or_path, save_path, revision, token)
         
         return TranslateModel(model_path, **kwargs)
-        
-        
-            
-            
-            
-        
-            
-        
-
-            
-            
         
 
 
