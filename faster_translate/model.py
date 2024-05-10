@@ -161,19 +161,19 @@ class TranslateModel:
         return translated_results
 
     def translate_hf_dataset(self, 
-                             dataset_repo, 
-                             subset_name = None,
-                             split=["train"], 
-                             columns=[], 
-                             batch_size=16, 
-                             token = None, 
-                             start_idx = 0,
-                             end_idx = -1,
-                             output_format = "json",
-                             output_name="preds.json",
-                             push_to_hub=False,
-                             save_repo_name=None,
-                             ):
+                            dataset_repo, 
+                            subset_name=None,
+                            split=["train"], 
+                            columns=[], 
+                            batch_size=16, 
+                            token=None, 
+                            start_idx=0,
+                            end_idx=None,
+                            output_format="json",
+                            output_name="preds.json",
+                            push_to_hub=False,
+                            save_repo_name=None,
+                            ):
 
         dataset_args = [dataset_repo]
         if subset_name is not None:
@@ -196,20 +196,24 @@ class TranslateModel:
             data_length_map = []
             final_dataset_dict[split_name] = {}
             
-            start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
-            end_idx = len(split_data)+end_idx if end_idx < 0 else end_idx
-            temp_dataset[split_name] = split_data.select(range(start_idx, end_idx)) 
+            #handling last index for full dataset.
+            if end_idx == None:
+                end_idx = len(split_data)
+            # handling negative indices properly for each splits.
+            _start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
+            _end_idx = len(split_data)+end_idx if end_idx < 0 else end_idx
+            temp_dataset[split_name] = split_data.select(range(_start_idx, _end_idx)) 
             
             for column in columns:
                 data_list = split_data[column]
                 
                 if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endsswith("]") and isinstance(eval(data_list[0]), list)):
-                    for sample in data_list[start_idx:end_idx]:
+                    for sample in data_list[_start_idx:_end_idx]:
                         sample = sample if isinstance(data_list[0], list) else eval(sample)
                         data_length_map.append(len(sample))
                         flattened_data_list.extend(sample)
                 elif isinstance(data_list[0], str):
-                    flattened_data_list = data_list[start_idx:end_idx]
+                    flattened_data_list = data_list[_start_idx:_end_idx]
                 else:
                     raise Exception(f"We only support of `str` or `List[str]` type columns,  not `{type(data_list[0])}`")
                 
