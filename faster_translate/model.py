@@ -195,10 +195,10 @@ class TranslateModel:
             flattened_data_list = []
             data_length_map = []
             final_dataset_dict[split_name] = {}
-            if end_idx == -1:
-                temp_dataset[split_name] = split_data.select(range(start_idx, len(split_data))) 
-            else:
-                temp_dataset[split_name] = split_data.select(range(start_idx, end_idx)) 
+            
+            start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
+            end_idx = len(split_data)+end_idx if end_idx < 0 else end_idx
+            temp_dataset[split_name] = split_data.select(range(start_idx, end_idx)) 
             
             for column in columns:
                 data_list = split_data[column]
@@ -225,11 +225,12 @@ class TranslateModel:
                 
                 final_dataset_dict[split_name][column] = translated_data_list
                 
-                print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
+                
                 if len(temp_dataset[split_name]) == len(translated_data_list):
                     temp_dataset[split_name] = temp_dataset[split_name].add_column(f"translated_{column}", translated_data_list)
                 else: 
                     print("Given data and Translated data length doesn't match")
+                    print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
 
         with open(output_name, 'w', encoding='utf-8') as f:
             json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
