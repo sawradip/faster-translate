@@ -213,7 +213,7 @@ class TranslateModel:
             temp_dataset[split_name] = split_data.select(range(_start_idx, _end_idx)) 
             
             for column in columns:
-                print(f"\033[1;31;44m Translating {split_name} split from {_start_idx} to {_end_idx} of column {column}.")
+                print(f"\033[1;34;40m Translating {split_name} split from {_start_idx} to {_end_idx} of column {column}.")
                 data_list = split_data[column]
                 
                 if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endsswith("]") and isinstance(eval(data_list[0]), list)):
