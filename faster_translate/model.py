@@ -197,7 +197,7 @@ class TranslateModel:
             for column in columns:
                 data_list = split_data[column]
                 
-                if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endsswith("]") and isinstance(eval(data_list[0]), list)):
+                if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endswith("]") and isinstance(eval(data_list[0]), list)):
                     for sample in data_list[start_idx:end_idx]:
                         sample = sample if isinstance(data_list[0], list) else eval(sample)
                         data_length_map.append(len(sample))
