@@ -175,6 +175,24 @@ class TranslateModel:
                             push_to_hub=False,
                             save_repo_name=None,
                             ):
+        """
+
+        Args:
+            dataset_repo (str): huggingface repo name
+            subset_name (str, optional): subset of the dataset. Defaults to None.
+            split (list, optional): Train, test, validation split. Defaults to ["train"].
+            columns (list, optional): which columns translate to . Defaults to [].
+            batch_size (int, optional): Batch size. Defaults to 16.
+            token (_type_, optional): hf token. Defaults to None.
+            translation_size (float, optional): Dataset percentage to translate. Defaults to None.
+            start_idx (int, optional): strating index. Defaults to 0.
+            end_idx (_type_, optional): ending index. Defaults to None.
+            output_format (str, optional): Dataset output format. Defaults to "json".
+            output_name (str, optional): output file name. Defaults to "preds.json".
+            push_to_hub (bool, optional): Push to hub or not. Defaults to False.
+            save_repo_name (_type_, optional): hf dataset name save to. Defaults to None.
+            
+        """
 
         dataset_args = [dataset_repo]
         if subset_name is not None:
@@ -192,6 +210,7 @@ class TranslateModel:
         
         temp_dataset = {}
         final_dataset_dict = {}
+        static_end_idx = end_idx
         for split_name in split:
             split_data = dataset[split_name]
             flattened_data_list = []
@@ -201,11 +220,12 @@ class TranslateModel:
             ## added translation_size to deal with the hassle of finding end_index
             if translation_size == None:
                 #handling last index for full dataset.
-                if end_idx == None:
+                if static_end_idx == None:
                     end_idx = len(split_data)
+                    
                 # handling negative indices properly for each splits.
                 _start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
-                _end_idx = len(split_data)+end_idx if end_idx < 0 else end_idx
+                _end_idx = (len(split_data)+end_idx if end_idx < 0 else end_idx) - 1
             else:
                 _start_idx = len(split_data)+start_idx if start_idx < 0 else start_idx
                 _end_idx = int(len(split_data) * translation_size) if translation_size <= 1 else len(split_data)
@@ -213,10 +233,10 @@ class TranslateModel:
             temp_dataset[split_name] = split_data.select(range(_start_idx, _end_idx)) 
             
             for column in columns:
-                print(f"\033[1;34;40m Translating {split_name} split from {_start_idx} to {_end_idx} of column {column}.")
+                print(f"\033[34mTranslating {split_name} split from {_start_idx} to {_end_idx} of column {column}.")
                 data_list = split_data[column]
                 
-                if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endsswith("]") and isinstance(eval(data_list[0]), list)):
+                if isinstance(data_list[0], list) or (data_list[0].startswith("[") and data_list[0].endswith("]") and isinstance(eval(data_list[0]), list)):
                     for sample in data_list[_start_idx:_end_idx]:
                         sample = sample if isinstance(data_list[0], list) else eval(sample)
                         data_length_map.append(len(sample))
@@ -244,7 +264,8 @@ class TranslateModel:
                 else: 
                     print("Given data and Translated data length doesn't match")
                     print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
-
+        
+        ## saving the data
         with open(output_name, 'w', encoding='utf-8') as f:
             json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
         
@@ -257,25 +278,6 @@ class TranslateModel:
             
         return final_dataset_dict
 
-        # text_list = dataset[split][column]
-    
-        # # Subset the text list if start_index and end_index are provided
-        # if start_index is not None and end_index is not None:
-        #     text_list = text_list[start_index:end_index+1]  # Add 1 to end_index to include it in the range
-    
-        # # Translate in batches
-        # translated_results=[]
-        # for text in text_list:
-        #     translated_batch=self.translate_batch1(text,batch_size=batch_size)
-        #     translated_results.append(translated_batch)
-        # return translated_results
-            
-        # translated_results = []
-        # for i in range(0, len(text_list), batch_size):
-        #     batch = text_list[i:i + batch_size]
-        #     translated_batch = self.translate_batch(batch)
-        #     translated_results.append(translated_batch)
-        # return translated_results
     @classmethod
     def from_pretrained(cls, model_name_or_path, save_path=None, revision=None, token=None, tokenizer_repo = None, **kwargs):
         """
