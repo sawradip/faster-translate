@@ -6,6 +6,7 @@ Faster Translate is a high-performance translation library built on top of ctran
 
 - High-speed translation leveraging ctranslate2
 - Support for loading models directly from Hugging Face's model hub
+- Save dataset directly to hf after translation.
 
 ## Installation
 
@@ -52,6 +53,62 @@ model.translate_batch([
     ])
 ```
 
+Translating HF dataset directly:
+```
+model = TranslateModel.from_pretrained(
+                                    "banglanmt_en2bn",
+                                       )
+
+model.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy", 
+    batch_size=8
+)
+```
+> Features while translating directly from hf dataset
+- automatically translate all subsets or any particular subset by specifiying in the `subset_name` parameter
+```
+model.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy",
+    subset_name=["google"], 
+    batch_size=8
+)
+```
+
+- automatically translate all splits (train, test, validation) or any particular subset by specifiying in the `split` parameter
+
+- automatically translate full dataset or partially specifying `start_idx` and `end_idx` or `translation_size` parameters.
+```
+model.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy",
+    subset_name="alt",
+    batch_size=8, 
+    start_idx=2,
+    end_idx=50
+)
+```
+
+```
+model.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy",
+    subset_name="alt",
+    batch_size=8, 
+    translation_size=0.5
+)
+```
+
+> Push the translated dataset to hf after translation
+```
+model.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy",
+    subset_name="alt",
+    batch_size=8, 
+    translation_size=0.5,
+    push_to_hub=True,
+    token=<pass your hf token>,
+    save_repo_name=<name of the dataset repo to save the data>,
+)
+```
+
 ### Currently Supported Models
 
 - [BanglaNMT(BUET)](https://github.com/csebuetnlp/banglanmt) -> (Bangla -> English) - `banglanmt_bn2en`
@@ -60,5 +117,6 @@ model.translate_batch([
 
 ### Features to be supported:
 
-- Model comversion Scripts
+- Model conversion Scripts
 - Direct HF dataset translation
+- Push the dataset directly to huggingface after translation
