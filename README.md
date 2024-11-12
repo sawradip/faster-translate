@@ -117,8 +117,9 @@ model.translate_hf_dataset(
 - [BanglaNMT(BUET)](https://github.com/csebuetnlp/banglanmt) -> (English -> Bangla) - `banglanmt_en2bn`
 - `bangla_mbartv1_en2bn`
 
-### Features to be supported:
+## 💪 Thanks To All Contributors
 
-- Model conversion Scripts
-- Direct HF dataset translation
-- Push the dataset directly to huggingface after translation
+<a href="https://github.com/sawradip/faster-translate/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=sawradip/faster-translate" alt="List of Contributors"/>
+</a>
+
