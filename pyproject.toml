@@ -3,23 +3,45 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "faster_translate"
-version = "1.0.1"
-description = "A simple translation utility using Hugging Face models."
+name = "faster-translate"
+version = "1.0.2"
+description = "A high-performance translation library using CTTranslate2 and vLLM."
 readme = "README.md"
 authors = [{name = "Sawradip Saha", email = "sawradip0@gmail.com"}]
 license = {file = "LICENSE"}
-keywords = ["translation", "huggingface", "nlp"]
+keywords = ["translation", "huggingface", "nlp", "ctranslate2", "vllm"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research"
 ]
 dependencies = [
     "transformers>=4.36.1",
     "ctranslate2>=4.1.0",
     "tokenizers>=0.15.2",
+    "datasets>=2.10.0",
+    "huggingface_hub>=0.19.0",
+    "tqdm>=4.64.0"
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+normalizer = ["csebuetnlp-normalizer>=1.0.0"]
+vllm = ["vllm>=0.3.0"]
+all = [
     "csebuetnlp-normalizer>=1.0.0",
-    "datasets>=2.10.0"
+    "vllm>=0.3.0"
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/sawradip/faster-translate"
+"Bug Tracker" = "https://github.com/sawradip/faster-translate/issues"
+"Documentation" = "https://github.com/sawradip/faster-translate/blob/main/README.md"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["faster_translate"]
