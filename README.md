@@ -22,20 +22,22 @@ A high-performance translation library powered by state-of-the-art models. Faste
 
 ## 📦 Installation
 
+### Basic Installation
+
 ```bash
 pip install faster-translate
 ```
 
-### Optional Dependencies
-
-For specific normalizers or model backends:
+### With vLLM Support (Recommended)
 
 ```bash
-# For Bengali text normalization
-pip install git+https://github.com/csebuetnlp/normalizer
+pip install faster-translate[vllm]
+```
 
-# For vLLM backend support (required for LLM-based models)
-pip install vllm
+### All Features
+
+```bash
+pip install faster-translate[all]
 ```
 
 ## 🔍 Usage
