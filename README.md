@@ -1,125 +1,178 @@
-<a href="https://pepy.tech/projects/faster-translate"><img src="https://static.pepy.tech/badge/faster-translate" alt="PyPI Downloads"></a>
-<a href="https://pepy.tech/projects/faster-translate"><img src="https://static.pepy.tech/badge/faster-translate/month" alt="PyPI Downloads"></a>
 # Faster Translate
 
-Faster Translate is a high-performance translation library built on top of ctranslate2 and designed for fast and efficient translation. It provides an easy-to-use interface for translating text in various languages with support for pre-trained models from Hugging Face's model hub.
+<div align="center">
 
-## Features
+[![PyPI Downloads](https://static.pepy.tech/badge/faster-translate)](https://pepy.tech/projects/faster-translate)
+[![Monthly Downloads](https://static.pepy.tech/badge/faster-translate/month)](https://pepy.tech/projects/faster-translate)
+[![GitHub License](https://img.shields.io/github/license/sawradip/faster-translate)](https://github.com/sawradip/faster-translate/blob/main/LICENSE)
+[![PyPI Version](https://img.shields.io/pypi/v/faster-translate)](https://pypi.org/project/faster-translate/)
 
-- High-speed translation leveraging ctranslate2
-- Support for loading models directly from Hugging Face's model hub
-- Save dataset directly to hf after translation.
+</div>
 
-## Installation
+A high-performance translation library powered by state-of-the-art models. Faster Translate offers optimized inference using CTranslate2 and vLLM backends, providing an easy-to-use interface for applications requiring efficient and accurate translations.
 
-To install Faster Translate, you can use pip:
+## 🚀 Features
 
-```
+- **High-performance inference** using CTranslate2 and vLLM backends
+- **Seamless integration** with Hugging Face models
+- **Flexible API** for single sentence, batch, and large-scale translation
+- **Dataset translation** with direct Hugging Face integration
+- **Multi-backend support** for both traditional (CTranslate2) and LLM-based (vLLM) models
+- **Text normalization** for improved translation quality
+
+## 📦 Installation
+
+```bash
 pip install faster-translate
 ```
 
-## Usage:
+### Optional Dependencies
 
-Initialize with supported model name:
+For specific normalizers or model backends:
 
+```bash
+# For Bengali text normalization
+pip install git+https://github.com/csebuetnlp/normalizer
+
+# For vLLM backend support (required for LLM-based models)
+pip install vllm
 ```
-from faster_translate import TranslateModel
 
-model = TranslateModel.from_pretrained("banglanmt_bn2en")
+## 🔍 Usage
+
+### Basic Translation
+
+```python
+from faster_translate import TranslatorModel
+
+# Initialize with a pre-configured model
+translator = TranslatorModel.from_pretrained("banglanmt_bn2en")
+
+# Translate a single sentence
+english_text = translator.translate_single("দেশে বিদেশি ঋণ নিয়ে এখন বেশ আলোচনা হচ্ছে।")
+print(english_text)
+
+# Translate a batch of sentences
+bengali_sentences = [
+    "দেশে বিদেশি ঋণ নিয়ে এখন বেশ আলোচনা হচ্ছে।",
+    "রাত তিনটার দিকে কাঁচামাল নিয়ে গুলিস্তান থেকে পুরান ঢাকার শ্যামবাজারের আড়তে যাচ্ছিলেন লিটন ব্যাপারী।"
+]
+translations = translator.translate_batch(bengali_sentences)
 ```
 
-Or, `ct2` converted models, local or from huggingfcae hub:
+### Using Different Model Backends
 
+```python
+# Using a CTTranslate2-based model
+ct2_translator = TranslatorModel.from_pretrained("banglanmt_bn2en")
+
+# Using a vLLM-based model
+vllm_translator = TranslatorModel.from_pretrained("bangla_qwen_en2bn")
 ```
-from faster_translate import TranslateModel
 
-model = TranslateModel.from_pretrained(
+### Loading Models from Hugging Face
+
+```python
+# Load a specific model from Hugging Face
+translator = TranslatorModel.from_pretrained(
     "sawradip/faster-translate-banglanmt-bn2en-t5",
-    normalizer_func = "buetnlpnormalizer"
-                                       )
-
-```
-
-You can translate a single sentence:
-
-```
-model.translate_single("দেশে বিদেশি ঋণ নিয়ে এখন বেশ আলোচনা হচ্ছে। এই ঋণ পরিশোধের চাপ ধীরে ধীরে বাড়ছে। গত ২০২২-২৩ অর্থবছরে মোট ২৬৭ কোটি ডলারের ঋণ পরিশোধ করতে হয়েছে। আগামী সাত বছরে ঋণ পরিশোধের পরিমাণ বেড়ে দ্বিগুণ হবে বলে মনে করছে অর্থনৈতিক সম্পর্ক বিভাগ (ইআরডি)।")
-```
-
-Or a batch:
-
-```
-model.translate_batch([
-    "দেশে বিদেশি ঋণ নিয়ে এখন বেশ আলোচনা হচ্ছে। এই ঋণ পরিশোধের চাপ ধীরে ধীরে বাড়ছে। গত ২০২২-২৩ অর্থবছরে মোট ২৬৭ কোটি ডলারের ঋণ পরিশোধ করতে হয়েছে। আগামী সাত বছরে ঋণ পরিশোধের পরিমাণ বেড়ে দ্বিগুণ হবে বলে মনে করছে অর্থনৈতিক সম্পর্ক বিভাগ (ইআরডি)।",
-    "রাত তিনটার দিকে কাঁচামাল নিয়ে গুলিস্তান থেকে পুরান ঢাকার শ্যামবাজারের আড়তে যাচ্ছিলেন লিটন ব্যাপারী। "
-    ])
-```
-
-Translating HF dataset directly:
-```
-model = TranslateModel.from_pretrained(
-                                    "banglanmt_en2bn",
-                                       )
-
-model.translate_hf_dataset(
-    "sawradip/bn-translation-mega-raw-noisy", 
-    batch_size=8
+    normalizer_func="buetnlpnormalizer"
 )
 ```
-> Features while translating directly from hf dataset
-- automatically translate all subsets or any particular subset by specifiying in the `subset_name` parameter
-```
-model.translate_hf_dataset(
+
+### Translating Hugging Face Datasets
+
+Translate an entire dataset with a single function call:
+
+```python
+translator = TranslatorModel.from_pretrained("banglanmt_en2bn")
+
+# Translate the entire dataset
+translator.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy", 
+    batch_size=16
+)
+
+# Translate specific subsets
+translator.translate_hf_dataset(
     "sawradip/bn-translation-mega-raw-noisy",
     subset_name=["google"], 
-    batch_size=8
+    batch_size=16
+)
+
+# Translate a portion of the dataset
+translator.translate_hf_dataset(
+    "sawradip/bn-translation-mega-raw-noisy",
+    subset_name="alt",
+    batch_size=16, 
+    translation_size=0.5  # Translate 50% of the dataset
 )
 ```
 
-- automatically translate all splits (train, test, validation) or any particular subset by specifiying in the `split` parameter
+### Publishing Translated Datasets
 
-- automatically translate full dataset or partially specifying `start_idx` and `end_idx` or `translation_size` parameters.
-```
-model.translate_hf_dataset(
+Push translated datasets directly to Hugging Face:
+
+```python
+translator.translate_hf_dataset(
     "sawradip/bn-translation-mega-raw-noisy",
     subset_name="alt",
-    batch_size=8, 
-    start_idx=2,
-    end_idx=50
-)
-```
-
-```
-model.translate_hf_dataset(
-    "sawradip/bn-translation-mega-raw-noisy",
-    subset_name="alt",
-    batch_size=8, 
-    translation_size=0.5
-)
-```
-
-> Push the translated dataset to hf after translation
-```
-model.translate_hf_dataset(
-    "sawradip/bn-translation-mega-raw-noisy",
-    subset_name="alt",
-    batch_size=8, 
-    translation_size=0.5,
+    batch_size=16, 
     push_to_hub=True,
-    token=<pass your hf token>,
-    save_repo_name=<name of the dataset repo to save the data>,
+    token="your_huggingface_token",
+    save_repo_name="your-username/translated-dataset"
 )
 ```
 
-### Currently Supported Models
+## 🌐 Supported Models
 
-- [BanglaNMT(BUET)](https://github.com/csebuetnlp/banglanmt) -> (Bangla -> English) - `banglanmt_bn2en`
-- [BanglaNMT(BUET)](https://github.com/csebuetnlp/banglanmt) -> (English -> Bangla) - `banglanmt_en2bn`
-- `bangla_mbartv1_en2bn`
+| Model ID | Source Language | Target Language | Backend | Description |
+|----------|----------------|----------------|---------|-------------|
+| `banglanmt_bn2en` | Bengali | English | CTranslate2 | BanglaNMT model from BUET |
+| `banglanmt_en2bn` | English | Bengali | CTranslate2 | BanglaNMT model from BUET |
+| `bangla_mbartv1_en2bn` | English | Bengali | CTranslate2 | MBart-based translation model |
+| `bangla_qwen_en2bn` | English | Bengali | vLLM | Qwen-based translation model |
 
-## 💪 Thanks To All Contributors
+## 🛠️ Advanced Configuration
+
+### Custom Sampling Parameters for vLLM Models
+
+```python
+from vllm import SamplingParams
+
+# Create custom sampling parameters
+sampling_params = SamplingParams(
+    temperature=0.7,
+    top_p=0.9,
+    max_tokens=512
+)
+
+# Initialize translator with custom parameters
+translator = TranslatorModel.from_pretrained(
+    "bangla_qwen_en2bn", 
+    sampling_params=sampling_params
+)
+```
+
+## 💪 Contributors
 
 <a href="https://github.com/sawradip/faster-translate/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=sawradip/faster-translate" alt="List of Contributors"/>
 </a>
 
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 📚 Citation
+
+If you use Faster Translate in your research, please cite:
+
+```bibtex
+@software{faster_translate,
+  author = {Sawradip Saha and Contributors},
+  title = {Faster Translate: High-Performance Machine Translation Library},
+  url = {https://github.com/sawradip/faster-translate},
+  year = {2024},
+}
+```

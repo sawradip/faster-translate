@@ -1,4 +1,4 @@
-from .model import TranslateModel
+from .model import TranslatorModel
 
 
 # python -m build
