@@ -301,6 +301,148 @@ class VLLMTranslatorModel:
             translated_batch = self.translate_batch(text_batch)
             translated_results.extend(translated_batch)
         return translated_results
+    def translate_hf_dataset(self, 
+                        dataset_repo, 
+                        subset_name=None,
+                        split=["train"], 
+                        columns=[], 
+                        batch_size=16, 
+                        token=None,
+                        translation_size=None,
+                        start_idx=0,
+                        end_idx=None,
+                        output_format="json",
+                        output_name="preds.json",
+                        push_to_hub=False,
+                        save_repo_name=None,
+                        keep_other_columns=True):
+        """
+        Translate columns from a HuggingFace dataset.
+        
+        Args:
+            dataset_repo: HuggingFace dataset repository
+            subset_name: Subset of the dataset
+            split: Train, test, validation split
+            columns: Which columns to translate
+            batch_size: Batch size
+            token: HuggingFace token
+            translation_size: Dataset percentage to translate
+            start_idx: Starting index
+            end_idx: Ending index
+            output_format: Dataset output format
+            output_name: Output file name
+            push_to_hub: Push to hub or not
+            save_repo_name: HuggingFace dataset name to save to
+            keep_other_columns: Whether to keep columns that are not being translated
+            
+        Returns:
+            Dictionary containing translated data
+        """
+        dataset_args = [dataset_repo]
+        if subset_name is not None:
+            dataset_args.append(subset_name)
+            
+        dataset_kwargs = {"verification_mode": "no_checks" }
+        if token is not None:
+            dataset_kwargs["token"] = token
+        dataset = load_dataset(*dataset_args, **dataset_kwargs)
+        
+        if split == "*":
+            split = [split for split in dataset.keys()]
+        if isinstance(split, str):
+            split = [split]
+        
+        temp_dataset = {}
+        final_dataset_dict = {}
+        static_end_idx = end_idx
+        
+        for split_name in split:
+            split_data = dataset[split_name]
+            flattened_data_list = []
+            data_length_map = []
+            final_dataset_dict[split_name] = {}
+            
+            # Handle indices for dataset slicing
+            if translation_size is None:
+                # Handling last index for full dataset
+                if static_end_idx is None:
+                    end_idx = len(split_data)
+                
+                # Handling negative indices properly for each split
+                _start_idx = len(split_data) + start_idx if start_idx < 0 else start_idx
+                _end_idx = (len(split_data) + end_idx if end_idx < 0 else end_idx)
+            else:
+                _start_idx = len(split_data) + start_idx if start_idx < 0 else start_idx
+                _end_idx = int(len(split_data) * translation_size) if translation_size <= 1 else translation_size
+            
+            # Initialize with selected dataset slice
+            temp_dataset[split_name] = split_data.select(range(_start_idx, _end_idx))
+            
+            # Include original columns in final_dataset_dict if keeping other columns
+            if keep_other_columns:
+                for original_col in split_data.column_names:
+                    if original_col not in columns:
+                        final_dataset_dict[split_name][original_col] = temp_dataset[split_name][original_col]
+            
+            for column in columns:
+                print(f"\033[34mTranslating {split_name} split from {_start_idx} to {_end_idx} of column {column}.")
+                data_list = split_data[column]
+                
+                # Handle different data formats (list of strings, nested lists)
+                if isinstance(data_list[0], list) or (
+                    isinstance(data_list[0], str) and 
+                    data_list[0].startswith("[") and 
+                    data_list[0].endswith("]") and 
+                    isinstance(eval(data_list[0]), list)
+                ):
+                    for sample in data_list[_start_idx:_end_idx]:
+                        sample = sample if isinstance(data_list[0], list) else eval(sample)
+                        data_length_map.append(len(sample))
+                        flattened_data_list.extend(sample)
+                elif isinstance(data_list[0], str):
+                    flattened_data_list = data_list[_start_idx:_end_idx]
+                else:
+                    raise Exception(f"We only support of `str` or `List[str]` type columns, not `{type(data_list[0])}`")
+                
+                # Translate the flattened data
+                translated_flattened_data_list = self.translate_bulk(flattened_data_list, batch_size=batch_size)
+                
+                # Reconstruct the original data structure
+                index_ptr = 0
+                translated_data_list = []
+                if not data_length_map:
+                    translated_data_list = translated_flattened_data_list
+                else:
+                    for data_length in data_length_map:
+                        translated_data_list.append(translated_flattened_data_list[index_ptr: index_ptr + data_length])
+                        index_ptr += data_length
+                
+                # Store the translated content with the original column name (replace original)
+                final_dataset_dict[split_name][column] = translated_data_list
+                
+                # Replace original column with translated content in the dataset
+                if len(temp_dataset[split_name]) == len(translated_data_list):
+                    # First remove the original column
+                    temp_dataset[split_name] = temp_dataset[split_name].remove_columns([column])
+                    # Then add the translated content with the original column name
+                    temp_dataset[split_name] = temp_dataset[split_name].add_column(column, translated_data_list)
+                else: 
+                    print("Given data and Translated data length doesn't match")
+                    print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
+        
+        # Save the data
+        with open(output_name, 'w', encoding='utf-8') as f:
+            json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
+        
+        # Push to HuggingFace Hub if requested
+        if push_to_hub:
+            if save_repo_name is not None:
+                temp_dataset = DatasetDict(temp_dataset)
+                temp_dataset.push_to_hub(repo_id=save_repo_name, token=token)
+            else:
+                print("Please provide a valid huggingface repo name for saving the dataset.")
+            
+        return final_dataset_dict
 
 
 class TranslatorModel:

@@ -126,6 +126,44 @@ translator.translate_hf_dataset(
 )
 ```
 
+### Enhanced vLLM HuggingFace Dataset Support
+
+When working with challenging datasets, you can use the `verification_mode="no_checks"` parameter:
+
+```python
+# Using vLLM backend with relaxed dataset verification
+vllm_translator = TranslatorModel.from_pretrained("bangla_qwen_en2bn")
+
+# Translate dataset with relaxed verification checks
+vllm_translator.translate_hf_dataset(
+    "difficult/dataset-with-formatting-issues",
+    batch_size=16,
+    # The verification_mode parameter is automatically set to "no_checks"
+    # to handle datasets with formatting inconsistencies
+)
+```
+### Advanced Dataset Translation Options
+
+`translate_hf_dataset` supports numerous parameters for fine-grained control:
+
+```python
+# Full parameter example
+translator.translate_hf_dataset(
+    dataset_repo="example/dataset",           # HuggingFace dataset repository
+    subset_name="subset",                     # Optional dataset subset
+    split=["train", "validation"],            # Dataset splits to translate (default: ["train"])
+    columns=["text", "instructions"],         # Columns to translate
+    batch_size=32,                            # Number of texts per batch
+    token="hf_token",                         # HuggingFace token for private datasets
+    translation_size=0.7,                     # Translate 70% of the dataset
+    start_idx=100,                            # Start from the 100th example
+    end_idx=1000,                             # End at the 1000th example
+    output_format="json",                     # Output format
+    output_name="translations.json",          # Output file name
+    push_to_hub=True,                         # Push translated dataset to HF Hub
+    save_repo_name="username/translated-data" # Repository name for upload
+)
+
 ## 🌐 Supported Models
 
 | Model ID | Source Language | Target Language | Backend | Description |
