@@ -18,11 +18,11 @@ _MODELS = {
         "model_type": "ctranslate2"
     },
     "bangla_qwen_en2bn": {
-        "model_repo": "AI4BD/Bangla-Qwen-Translator-v1.2",
+        "model_repo": "MentaCapture/Bangla-Qwen-Translator-v2.3",
         "tokenizer_repo": "AI4BD/Bangla-Qwen-Translator-Tokenizer",
         "model_type": "vllm",
         "max_model_len": 4096,
-        "gpu_memory_utilization": 0.95,
+        "gpu_memory_utilization": 0.8,
         "dtype": "bfloat16"
     }
 }

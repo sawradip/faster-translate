@@ -190,9 +190,264 @@ class TextNormalizer:
             raise Exception(f"{normalizer_name} not supported yet.")
 
 
+# class VLLMTranslatorModel:
+#     """
+#     Translator model that uses vLLM for inference.
+#     Specialized for models like Qwen that require a different inference approach.
+#     """
+    
+#     def __init__(self, 
+#                  model_name, 
+#                  tokenizer_name=None,
+#                  max_model_len=4096,
+#                  gpu_memory_utilization=0.5,
+#                  dtype="bfloat16",
+#                  token=None,
+#                  sampling_params=None):
+#         """
+#         Initialize the vLLM translator model.
+        
+#         Args:
+#             model_name: Name of the vLLM model
+#             tokenizer_name: Name of the tokenizer (defaults to model_name if None)
+#             max_model_len: Maximum model length for inference
+#             gpu_memory_utilization: GPU memory utilization (0.0 to 1.0)
+#             dtype: Data type for model weights
+#             token: HuggingFace token for private models
+#             sampling_params: SamplingParams instance or dict for generation
+#         """
+#         if not VLLM_AVAILABLE:
+#             raise ImportError("vLLM is not installed. Please install it with `pip install vllm`")
+            
+#         self.model_name = model_name
+#         self.tokenizer_name = tokenizer_name if tokenizer_name else model_name
+        
+#         # Initialize tokenizer
+#         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name, token=token)
+        
+#         os.environ["HF_TOKEN"] = token
+#         # Initialize LLM
+#         self.llm = LLM(
+#             model=self.model_name, 
+#             max_model_len=max_model_len, 
+#             gpu_memory_utilization=gpu_memory_utilization, 
+#             dtype=dtype
+#         )
+        
+#         # Set default sampling parameters if not provided
+#         if sampling_params is None:
+#             self.sampling_params = SamplingParams(
+#                 temperature=0.0,
+#                 top_p=1.0,
+#                 max_tokens=1024
+#             )
+#         elif isinstance(sampling_params, dict):
+#             self.sampling_params = SamplingParams(**sampling_params)
+#         else:
+#             self.sampling_params = sampling_params
+    
+#     def translate_single(self, text):
+#         """
+#         Translate a single text using the vLLM model.
+        
+#         Args:
+#             text: Text to translate
+            
+#         Returns:
+#             Translated text
+#         """
+#         prompt = self.tokenizer.apply_chat_template([{"role": "user", "content": text}], 
+#                                                   tokenize=False, 
+#                                                   add_generation_prompt=True)
+        
+#         outputs = self.llm.generate([prompt], self.sampling_params)
+#         return outputs[0].outputs[0].text
+    
+#     def translate_batch(self, text_batch):
+#         """
+#         Translate a batch of texts using the vLLM model.
+        
+#         Args:
+#             text_batch: List of texts to translate
+            
+#         Returns:
+#             List of translated texts
+#         """
+#         prompts = [
+#             self.tokenizer.apply_chat_template([{"role": "user", "content": text}], 
+#                                              tokenize=False, 
+#                                              add_generation_prompt=True)
+#             for text in text_batch
+#         ]
+        
+#         outputs = self.llm.generate(prompts, self.sampling_params)
+#         return [output.outputs[0].text for output in outputs]
+    
+#     def translate_bulk(self, text_list, batch_size=16):
+#         """
+#         Translate a large list of texts in batches with progress bar.
+        
+#         Args:
+#             text_list: List of texts to translate
+#             batch_size: Number of texts to translate at once
+            
+#         Returns:
+#             List of translated texts
+#         """
+#         text_batches = [text_list[i:i + batch_size] for i in range(0, len(text_list), batch_size)]
+        
+#         translated_results = []
+#         for text_batch in tqdm(text_batches):
+#             translated_batch = self.translate_batch(text_batch)
+#             translated_results.extend(translated_batch)
+#         return translated_results
+#     def translate_hf_dataset(self, 
+#                         dataset_repo, 
+#                         subset_name=None,
+#                         split=["train"], 
+#                         columns=[], 
+#                         batch_size=16, 
+#                         token=None,
+#                         translation_size=None,
+#                         start_idx=0,
+#                         end_idx=None,
+#                         output_format="json",
+#                         output_name="preds.json",
+#                         push_to_hub=False,
+#                         save_repo_name=None,
+#                         keep_other_columns=True):
+#         """
+#         Translate columns from a HuggingFace dataset.
+        
+#         Args:
+#             dataset_repo: HuggingFace dataset repository
+#             subset_name: Subset of the dataset
+#             split: Train, test, validation split
+#             columns: Which columns to translate
+#             batch_size: Batch size
+#             token: HuggingFace token
+#             translation_size: Dataset percentage to translate
+#             start_idx: Starting index
+#             end_idx: Ending index
+#             output_format: Dataset output format
+#             output_name: Output file name
+#             push_to_hub: Push to hub or not
+#             save_repo_name: HuggingFace dataset name to save to
+#             keep_other_columns: Whether to keep columns that are not being translated
+            
+#         Returns:
+#             Dictionary containing translated data
+#         """
+#         dataset_args = [dataset_repo]
+#         if subset_name is not None:
+#             dataset_args.append(subset_name)
+            
+#         dataset_kwargs = {"verification_mode": "no_checks" }
+#         if token is not None:
+#             dataset_kwargs["token"] = token
+#         dataset = load_dataset(*dataset_args, **dataset_kwargs)
+        
+#         if split == "*":
+#             split = [split for split in dataset.keys()]
+#         if isinstance(split, str):
+#             split = [split]
+        
+#         temp_dataset = {}
+#         final_dataset_dict = {}
+#         static_end_idx = end_idx
+        
+#         for split_name in split:
+#             split_data = dataset[split_name]
+#             flattened_data_list = []
+#             data_length_map = []
+#             final_dataset_dict[split_name] = {}
+            
+#             # Handle indices for dataset slicing
+#             if translation_size is None:
+#                 # Handling last index for full dataset
+#                 if static_end_idx is None:
+#                     end_idx = len(split_data)
+                
+#                 # Handling negative indices properly for each split
+#                 _start_idx = len(split_data) + start_idx if start_idx < 0 else start_idx
+#                 _end_idx = (len(split_data) + end_idx if end_idx < 0 else end_idx)
+#             else:
+#                 _start_idx = len(split_data) + start_idx if start_idx < 0 else start_idx
+#                 _end_idx = int(len(split_data) * translation_size) if translation_size <= 1 else translation_size
+            
+#             # Initialize with selected dataset slice
+#             temp_dataset[split_name] = split_data.select(range(_start_idx, _end_idx))
+            
+#             # Include original columns in final_dataset_dict if keeping other columns
+#             if keep_other_columns:
+#                 for original_col in split_data.column_names:
+#                     if original_col not in columns:
+#                         final_dataset_dict[split_name][original_col] = temp_dataset[split_name][original_col]
+            
+#             for column in columns:
+#                 print(f"\033[34mTranslating {split_name} split from {_start_idx} to {_end_idx} of column {column}.")
+#                 data_list = split_data[column]
+                
+#                 # Handle different data formats (list of strings, nested lists)
+#                 if isinstance(data_list[0], list) or (
+#                     isinstance(data_list[0], str) and 
+#                     data_list[0].startswith("[") and 
+#                     data_list[0].endswith("]") and 
+#                     isinstance(eval(data_list[0]), list)
+#                 ):
+#                     for sample in data_list[_start_idx:_end_idx]:
+#                         sample = sample if isinstance(data_list[0], list) else eval(sample)
+#                         data_length_map.append(len(sample))
+#                         flattened_data_list.extend(sample)
+#                 elif isinstance(data_list[0], str):
+#                     flattened_data_list = data_list[_start_idx:_end_idx]
+#                 else:
+#                     raise Exception(f"We only support of `str` or `List[str]` type columns, not `{type(data_list[0])}`")
+                
+#                 # Translate the flattened data
+#                 translated_flattened_data_list = self.translate_bulk(flattened_data_list, batch_size=batch_size)
+                
+#                 # Reconstruct the original data structure
+#                 index_ptr = 0
+#                 translated_data_list = []
+#                 if not data_length_map:
+#                     translated_data_list = translated_flattened_data_list
+#                 else:
+#                     for data_length in data_length_map:
+#                         translated_data_list.append(translated_flattened_data_list[index_ptr: index_ptr + data_length])
+#                         index_ptr += data_length
+                
+#                 # Store the translated content with the original column name (replace original)
+#                 final_dataset_dict[split_name][column] = translated_data_list
+                
+#                 # Replace original column with translated content in the dataset
+#                 if len(temp_dataset[split_name]) == len(translated_data_list):
+#                     # First remove the original column
+#                     temp_dataset[split_name] = temp_dataset[split_name].remove_columns([column])
+#                     # Then add the translated content with the original column name
+#                     temp_dataset[split_name] = temp_dataset[split_name].add_column(column, translated_data_list)
+#                 else: 
+#                     print("Given data and Translated data length doesn't match")
+#                     print(f"Length of given dataset: {len(temp_dataset[split_name])}", f"Length of translated Data: {len(translated_data_list)}", sep='\n')
+        
+#         # Save the data
+#         with open(output_name, 'w', encoding='utf-8') as f:
+#             json.dump(final_dataset_dict, f, ensure_ascii=False, indent=4)
+        
+#         # Push to HuggingFace Hub if requested
+#         if push_to_hub:
+#             if save_repo_name is not None:
+#                 temp_dataset = DatasetDict(temp_dataset)
+#                 temp_dataset.push_to_hub(repo_id=save_repo_name, token=token)
+#             else:
+#                 print("Please provide a valid huggingface repo name for saving the dataset.")
+            
+#         return final_dataset_dict
+# Modifications to enable streaming in vLLM and dataset loading
+
 class VLLMTranslatorModel:
     """
-    Translator model that uses vLLM for inference.
+    Translator model that uses vLLM for inference with streaming support.
     Specialized for models like Qwen that require a different inference approach.
     """
     
@@ -200,12 +455,13 @@ class VLLMTranslatorModel:
                  model_name, 
                  tokenizer_name=None,
                  max_model_len=4096,
-                 gpu_memory_utilization=0.95,
+                 gpu_memory_utilization=0.5,
                  dtype="bfloat16",
                  token=None,
-                 sampling_params=None):
+                 sampling_params=None,
+                 enable_streaming=False):
         """
-        Initialize the vLLM translator model.
+        Initialize the vLLM translator model with optional streaming support.
         
         Args:
             model_name: Name of the vLLM model
@@ -215,12 +471,14 @@ class VLLMTranslatorModel:
             dtype: Data type for model weights
             token: HuggingFace token for private models
             sampling_params: SamplingParams instance or dict for generation
+            enable_streaming: Whether to enable token streaming during generation
         """
         if not VLLM_AVAILABLE:
             raise ImportError("vLLM is not installed. Please install it with `pip install vllm`")
             
         self.model_name = model_name
         self.tokenizer_name = tokenizer_name if tokenizer_name else model_name
+        self.enable_streaming = enable_streaming
         
         # Initialize tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name, token=token)
@@ -237,7 +495,7 @@ class VLLMTranslatorModel:
         # Set default sampling parameters if not provided
         if sampling_params is None:
             self.sampling_params = SamplingParams(
-                temperature=0.0,
+                temperature=0.3,
                 top_p=1.0,
                 max_tokens=1024
             )
@@ -245,44 +503,6 @@ class VLLMTranslatorModel:
             self.sampling_params = SamplingParams(**sampling_params)
         else:
             self.sampling_params = sampling_params
-    
-    def translate_single(self, text):
-        """
-        Translate a single text using the vLLM model.
-        
-        Args:
-            text: Text to translate
-            
-        Returns:
-            Translated text
-        """
-        prompt = self.tokenizer.apply_chat_template([{"role": "user", "content": text}], 
-                                                  tokenize=False, 
-                                                  add_generation_prompt=True)
-        
-        outputs = self.llm.generate([prompt], self.sampling_params)
-        return outputs[0].outputs[0].text
-    
-    def translate_batch(self, text_batch):
-        """
-        Translate a batch of texts using the vLLM model.
-        
-        Args:
-            text_batch: List of texts to translate
-            
-        Returns:
-            List of translated texts
-        """
-        prompts = [
-            self.tokenizer.apply_chat_template([{"role": "user", "content": text}], 
-                                             tokenize=False, 
-                                             add_generation_prompt=True)
-            for text in text_batch
-        ]
-        
-        outputs = self.llm.generate(prompts, self.sampling_params)
-        return [output.outputs[0].text for output in outputs]
-    
     def translate_bulk(self, text_list, batch_size=16):
         """
         Translate a large list of texts in batches with progress bar.
@@ -301,6 +521,82 @@ class VLLMTranslatorModel:
             translated_batch = self.translate_batch(text_batch)
             translated_results.extend(translated_batch)
         return translated_results
+    
+    def translate_single(self, text, callback=None):
+        """
+        Translate a single text using the vLLM model, with optional streaming.
+        
+        Args:
+            text: Text to translate
+            callback: Optional callback function for streaming mode
+            
+        Returns:
+            Translated text or generator if streaming
+        """
+        prompt = self.tokenizer.apply_chat_template([{"role": "user", "content": text}], 
+                                                  tokenize=False, 
+                                                  add_generation_prompt=True)
+        
+        if self.enable_streaming and callback is not None:
+            return self._stream_translation(prompt, callback)
+        else:
+            outputs = self.llm.generate([prompt], self.sampling_params)
+            return outputs[0].outputs[0].text
+    
+    def _stream_translation(self, prompt, callback):
+        """
+        Stream translation results token by token.
+        
+        Args:
+            prompt: Prompt to generate from
+            callback: Function to call with each new token
+            
+        Returns:
+            Generator yielding tokens as they are generated
+        """
+        # Set streaming in sampling params
+        streaming_params = SamplingParams(
+            **self.sampling_params.__dict__,
+            stream=True
+        )
+        
+        # Get the request ID
+        request_id = self.llm.generate([prompt], streaming_params)[0].request_id
+        
+        # Return a generator that yields each new token
+        output_text = ""
+        for output in self.llm.stream_results([request_id]):
+            if output.outputs:
+                next_token = output.outputs[0].text[len(output_text):]
+                output_text = output.outputs[0].text
+                if next_token:
+                    callback(next_token)
+                    yield next_token
+    
+    def translate_batch(self, text_batch):
+        """
+        Translate a batch of texts using the vLLM model.
+        Streaming is not supported for batch translation.
+        
+        Args:
+            text_batch: List of texts to translate
+            
+        Returns:
+            List of translated texts
+        """
+        if self.enable_streaming:
+            print("Warning: Streaming mode is not supported for batch translation.")
+        
+        prompts = [
+            self.tokenizer.apply_chat_template([{"role": "user", "content": text}], 
+                                             tokenize=False, 
+                                             add_generation_prompt=True)
+            for text in text_batch
+        ]
+        
+        outputs = self.llm.generate(prompts, self.sampling_params)
+        return [output.outputs[0].text for output in outputs]
+    
     def translate_hf_dataset(self, 
                         dataset_repo, 
                         subset_name=None,
@@ -315,9 +611,10 @@ class VLLMTranslatorModel:
                         output_name="preds.json",
                         push_to_hub=False,
                         save_repo_name=None,
-                        keep_other_columns=True):
+                        keep_other_columns=True,
+                        streaming_dataset=False):
         """
-        Translate columns from a HuggingFace dataset.
+        Translate columns from a HuggingFace dataset with optional streaming.
         
         Args:
             dataset_repo: HuggingFace dataset repository
@@ -334,17 +631,23 @@ class VLLMTranslatorModel:
             push_to_hub: Push to hub or not
             save_repo_name: HuggingFace dataset name to save to
             keep_other_columns: Whether to keep columns that are not being translated
+            streaming_dataset: Whether to stream the dataset instead of loading it all at once
             
         Returns:
-            Dictionary containing translated data
+            Dictionary containing translated data or a generator if streaming
         """
         dataset_args = [dataset_repo]
         if subset_name is not None:
             dataset_args.append(subset_name)
             
-        dataset_kwargs = {"verification_mode": "no_checks" }
+        dataset_kwargs = {"verification_mode": "no_checks"}
         if token is not None:
             dataset_kwargs["token"] = token
+        
+        # Add streaming parameter
+        if streaming_dataset:
+            dataset_kwargs["streaming"] = True
+        
         dataset = load_dataset(*dataset_args, **dataset_kwargs)
         
         if split == "*":
@@ -352,6 +655,15 @@ class VLLMTranslatorModel:
         if isinstance(split, str):
             split = [split]
         
+        # Handle streaming dataset
+        if streaming_dataset:
+            return self._translate_streaming_dataset(
+                dataset, split, columns, batch_size, 
+                translation_size, start_idx, end_idx,
+                output_format, output_name
+            )
+        
+        # Original non-streaming implementation
         temp_dataset = {}
         final_dataset_dict = {}
         static_end_idx = end_idx
@@ -443,7 +755,96 @@ class VLLMTranslatorModel:
                 print("Please provide a valid huggingface repo name for saving the dataset.")
             
         return final_dataset_dict
-
+    
+    def _translate_streaming_dataset(self,
+                                   dataset,
+                                   split,
+                                   columns,
+                                   batch_size,
+                                   translation_size,
+                                   start_idx,
+                                   end_idx,
+                                   output_format,
+                                   output_name):
+        """
+        Process a streaming dataset, translating it in chunks.
+        
+        This method yields translated samples as they are processed,
+        avoiding loading the entire dataset into memory.
+        """
+        for split_name in split:
+            stream = dataset[split_name]
+            
+            # Apply skip and take for streaming datasets
+            if start_idx > 0:
+                stream = stream.skip(start_idx)
+            
+            # Limit the number of items to process
+            if translation_size is not None:
+                if translation_size <= 1.0:
+                    # We can't calculate percentage for streaming, so warn user
+                    print("Warning: Percentage-based translation_size not supported for streaming. Using as absolute value.")
+                stream = stream.take(int(translation_size))
+            elif end_idx is not None:
+                items_to_take = end_idx - start_idx
+                stream = stream.take(items_to_take)
+            
+            # Process in mini-batches to balance memory usage and efficiency
+            current_batch = []
+            processed_count = 0
+            
+            # Save output as we go
+            if output_format == "json":
+                output_file = open(output_name, 'w', encoding='utf-8')
+                output_file.write('{"results": [')
+                first_item = True
+            
+            try:
+                for sample in tqdm(stream):
+                    processed_samples = {}
+                    
+                    # Process each column that needs translation
+                    for column in columns:
+                        if column in sample:
+                            # Handle text and list formats
+                            data = sample[column]
+                            if isinstance(data, list) or (
+                                isinstance(data, str) and 
+                                data.startswith("[") and 
+                                data.endswith("]") and 
+                                isinstance(eval(data), list)
+                            ):
+                                data_list = data if isinstance(data, list) else eval(data)
+                                translated_items = []
+                                for item in data_list:
+                                    translated_items.append(self.translate_single(item))
+                                processed_samples[column] = translated_items
+                            else:
+                                processed_samples[column] = self.translate_single(data)
+                    
+                    # Add all other columns
+                    for key, value in sample.items():
+                        if key not in columns:
+                            processed_samples[key] = value
+                    
+                    # Write to output file
+                    if output_format == "json":
+                        if not first_item:
+                            output_file.write(',')
+                        else:
+                            first_item = False
+                        output_file.write(json.dumps(processed_samples, ensure_ascii=False))
+                    
+                    processed_count += 1
+                    yield processed_samples
+            
+            finally:
+                # Close the output file
+                if output_format == "json":
+                    output_file.write(']}')
+                    output_file.close()
+                    
+            print(f"Processed {processed_count} items from {split_name} split")
 
 class TranslatorModel:
     """
@@ -726,7 +1127,7 @@ class TranslatorModel:
                     "model_name": model_args.get("model_repo"),
                     "tokenizer_name": model_args.get("tokenizer_repo"),
                     "max_model_len": model_args.get("max_model_len", 4096),
-                    "gpu_memory_utilization": model_args.get("gpu_memory_utilization", 0.95),
+                    "gpu_memory_utilization": model_args.get("gpu_memory_utilization", 0.5),
                     "dtype": model_args.get("dtype", "bfloat16"),
                     "token": token,
                 }
